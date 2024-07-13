@@ -1,0 +1,5 @@
+[plugin]
+package = "pretix-exporter-bjr"
+modules = [ "pretix_exporter_bjr" ]
+marketplace_name = "exporter-bjr"
+

@@ -1,0 +1,42 @@
+[project]
+name = "pretix-exporter-bjr"
+dynamic = ["version"]
+description = "Export data for BJR lists"
+readme = "README.rst"
+license = {text = "Apache"}
+keywords = ["pretix"]
+authors = [
+    {name = "DPSG Würzburg", email = "technik@dpsg-wuerzburg.de"},
+]
+maintainers = [
+    {name = "DPSG Würzburg", email = "technik@dpsg-wuerzburg.de"},
+]
+
+dependencies = [
+]
+
+[project.entry-points."pretix.plugin"]
+pretix_exporter_bjr = "pretix_exporter_bjr:PretixPluginMeta"
+
+[project.entry-points."distutils.commands"]
+build = "pretix_plugin_build.build:CustomBuild"
+
+[build-system]
+requires = [
+    "setuptools",
+    "pretix-plugin-build",
+]
+
+[project.urls]
+homepage = "https://github.com/dpsgw-de/pretix-exporter-bjr"
+repository = "https://github.com/dpsgw-de/pretix-exporter-bjr.git"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "pretix_exporter_bjr.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["pretix*"]
+namespaces = false
