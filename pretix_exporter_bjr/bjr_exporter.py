@@ -79,10 +79,11 @@ class BjrExporter(MultiSheetListExporter):
         for ids in chunked_iterable(all_ids, 10000):
             ops = sorted(qs.filter(id__in=ids), key=lambda k: ids.index(k.pk))
             for op in ops:
+                name_parts = op.attendee_name_parts
                 row = [
                     str(op.item),
-                    op.attendee_name_parts['family_name'],
-                    op.attendee_name_parts['given_name']
+                    name_parts['family_name'] if 'family_name' in name_parts else "???",
+                    name_parts['given_name'] if 'given_name' in name_parts else "???",
                 ]
 
                 row += self._get_gender_cols(op)
