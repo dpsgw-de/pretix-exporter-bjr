@@ -1,12 +1,14 @@
+from collections import OrderedDict
 from datetime import datetime
 from decimal import Decimal
 
-from django.db.models import Subquery, OuterRef, Sum, F
+from django import forms
+from django.db.models import F, OuterRef, Subquery, Sum
 from django.utils.formats import date_format
 from django.utils.translation import pgettext_lazy
 
 from pretix.base.exporter import MultiSheetListExporter
-from pretix.base.models import OrderPosition, Invoice, InvoiceLine
+from pretix.base.models import Invoice, InvoiceLine, Order, OrderPosition
 from pretix.helpers.iter import chunked_iterable
 
 
@@ -21,6 +23,29 @@ class BjrExporter(MultiSheetListExporter):
     featured = True
 
     @property
+    def additional_form_fields(self) -> dict:
+        return OrderedDict([
+            ('items_tn',
+             forms.ModelMultipleChoiceField(
+                 queryset=self.event.items.all(),
+                 label='Produkte Teilnehmende',
+                 widget=forms.CheckboxSelectMultiple(
+                     attrs={'class': 'scrolling-multiple-choice'}
+                 ),
+                 initial=self.event.items.filter(admission=True)
+             )),
+            ('items_team',
+             forms.ModelMultipleChoiceField(
+                 queryset=self.event.items.all(),
+                 label='Produkte Teamende',
+                 widget=forms.CheckboxSelectMultiple(
+                     attrs={'class': 'scrolling-multiple-choice'}
+                 ),
+                 initial=self.event.items.filter(admission=True)
+             )),
+        ])
+
+    @property
     def sheets(self):
         return (
             ('aej', 'AEJ'),
@@ -31,12 +56,12 @@ class BjrExporter(MultiSheetListExporter):
 
     def iterate_sheet(self, form_data, sheet):
         if sheet == 'aej' or sheet == 'jbm' or sheet == 'team':
-            return self.iterate_positions(sheet)
+            return self.iterate_positions(sheet, form_data)
         elif sheet == 'belege':
             return self.iterate_belege()
 
     # Based on iterate_positions in orderlist.py from pretix
-    def iterate_positions(self, sheet: str):
+    def iterate_positions(self, sheet: str, form_data):
         headers = [
             "Produkt",
             "Nachname",
@@ -65,8 +90,15 @@ class BjrExporter(MultiSheetListExporter):
             ]
         yield headers
 
+        if sheet == 'aej' or sheet == 'jbm':
+            id_filter = form_data['items_tn']
+        else:  # sheet == 'team':
+            id_filter = form_data['items_team']
         base_qs = OrderPosition.all.filter(
             order__event__in=self.events,
+            item_id__in=id_filter,
+            order__status__in=[Order.STATUS_PAID, Order.STATUS_PENDING],
+            canceled=False
         )
         qs = base_qs.select_related(
             'order', 'order__invoice_address', 'order__customer', 'item', 'variation',
@@ -152,7 +184,7 @@ class BjrExporter(MultiSheetListExporter):
             "Verwendungszweck",
             "Betrag",
             "Anmerkung",
-            ]
+        ]
         yield headers
 
         base_qs = Invoice.objects.filter(event__in=self.events).select_related('order')
